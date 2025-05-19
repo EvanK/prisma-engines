@@ -1,6 +1,6 @@
 use crate::{
     datamodel::{
-        attributes::FieldAttribute, index::UniqueFieldAttribute, DefaultValue, FieldType, IdFieldDefinition, Relation,
+        attributes::FieldAttribute, index::UniqueFieldAttribute, DefaultValue, GeneratedValue, FieldType, IdFieldDefinition, Relation,
     },
     value::{Constant, Documentation, Function},
 };
@@ -17,6 +17,7 @@ pub struct Field<'a> {
     unique: Option<UniqueFieldAttribute<'a>>,
     id: Option<IdFieldDefinition<'a>>,
     default: Option<DefaultValue<'a>>,
+    generated: Option<GeneratedValue<'a>>,
     map: Option<FieldAttribute<'a>>,
     relation: Option<Relation<'a>>,
     native_type: Option<FieldAttribute<'a>>,
@@ -46,6 +47,7 @@ impl<'a> Field<'a> {
             unique: None,
             id: None,
             default: None,
+            generated: None,
             relation: None,
             native_type: None,
             ignore: None,
@@ -128,6 +130,18 @@ impl<'a> Field<'a> {
     /// ```
     pub fn default(&mut self, value: DefaultValue<'a>) {
         self.default = Some(value);
+    }
+
+    /// Sets the field generated attribute.
+    ///
+    /// ```ignore
+    /// model Address {
+    ///   zip9 String @generated("zip || '-' || zipPlus")
+    ///                           ^^^^^^^^^^^^^^^^^^^^^ value
+    /// }
+    /// ```
+    pub fn generated(&mut self, value: GeneratedValue<'a>) {
+        self.generated = Some(value);
     }
 
     /// Sets the native type of the field.
@@ -251,6 +265,10 @@ impl fmt::Display for Field<'_> {
 
         if let Some(ref def) = self.default {
             write!(f, " {def}")?;
+        }
+
+        if let Some(ref generated) = self.generated {
+            write!(f, " {generated}")?;
         }
 
         if let Some(ref map) = self.map {

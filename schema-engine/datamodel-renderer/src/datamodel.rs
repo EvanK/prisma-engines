@@ -8,6 +8,7 @@ mod default;
 mod enumerator;
 mod field;
 mod field_type;
+mod generated;
 mod index;
 mod model;
 mod view;
@@ -17,6 +18,7 @@ pub use default::DefaultValue;
 pub use enumerator::{Enum, EnumVariant};
 pub use field::Field;
 pub use field_type::FieldType;
+pub use generated::GeneratedValue;
 pub use index::{IdDefinition, IdFieldDefinition, IndexDefinition, IndexFieldInput, IndexOps, UniqueFieldAttribute};
 pub use model::{Model, Relation};
 use psl::SourceFile;
@@ -210,7 +212,14 @@ mod tests {
         let dv = DefaultValue::function(Function::new("autoincrement"));
         field.default(dv);
 
+        let mut field2 = Field::new("id2", "Int");
+
+        let mut gv = GeneratedValue::text("id || '_copy'");
+        gv.kind("stored");
+        field2.generated(gv);
+
         model.push_field(field);
+        model.push_field(field2);
         data_model.push_model(file_name.to_string(), model);
 
         let mut traffic_light = Enum::new("TrafficLight");
@@ -242,7 +251,8 @@ mod tests {
             }
 
             model User {
-              id Int @id @default(autoincrement())
+              id  Int @id @default(autoincrement())
+              id2 Int @generated("id || '_copy'", kind: "stored")
             }
 
             view Meow {
