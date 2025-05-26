@@ -1,4 +1,5 @@
 mod default;
+mod generated;
 mod id;
 mod map;
 mod native_types;
@@ -77,6 +78,11 @@ fn resolve_composite_type_attributes<'db>(
         if ctx.visit_optional_single_attr("default") {
             default::visit_composite_field_default(ctid, field_id, r#type, ctx);
             ctx.validate_visited_arguments();
+        }
+
+        // @generated
+        if ctx.visit_optional_single_attr("generated") {
+            generated::visit_composite_field_generated(ctid, field_id, r#type, ctx);
         }
 
         ctx.validate_visited_attributes();
@@ -245,6 +251,12 @@ fn visit_scalar_field_attributes(
         ctx.validate_visited_arguments();
     }
 
+    // @generated
+    if ctx.visit_optional_single_attr("generated") {
+        generated::visit_model_field_generated(scalar_field_id, model_id, field_id, r#type, ctx);
+        ctx.validate_visited_arguments();
+    }
+
     if let ScalarFieldType::BuiltInScalar(_scalar_type) = r#type {
         // native type attributes
         if let Some((datasource_name, type_name, attribute_id)) = ctx.visit_datasource_scoped() {
@@ -353,6 +365,12 @@ fn visit_relation_field_attributes(rfid: RelationFieldId, ctx: &mut Context<'_>)
     // @default
     if ctx.visit_optional_single_attr("default") {
         ctx.push_attribute_validation_error("Cannot set a default value on a relation field.");
+        ctx.discard_arguments();
+    }
+
+    // @generated
+    if ctx.visit_optional_single_attr("generated") {
+        ctx.push_attribute_validation_error("Cannot set a generated value on a relation field.");
         ctx.discard_arguments();
     }
 

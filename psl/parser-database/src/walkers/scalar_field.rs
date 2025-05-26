@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     ast::{self, WithName},
-    types::{DefaultAttribute, FieldWithArgs, OperatorClassStore, ScalarField, ScalarType, SortOrder},
+    types::{DefaultAttribute, GeneratedAttribute, FieldWithArgs, OperatorClassStore, ScalarField, ScalarType, SortOrder},
     walkers::*,
     OperatorClass, ParserDatabase, ScalarFieldId, ScalarFieldType,
 };
@@ -55,6 +55,15 @@ impl<'db> ScalarFieldWalker<'db> {
             .default
             .as_ref()
             .map(|d| d.default_attribute)
+            .map(|id| &self.db.asts[id])
+    }
+
+    /// The `@generated()` AST attribute on the field, if any.
+    pub fn generated_attribute(self) -> Option<&'db ast::Attribute> {
+        self.attributes()
+            .generated
+            .as_ref()
+            .map(|g| g.generated_attribute)
             .map(|id| &self.db.asts[id])
     }
 
@@ -148,6 +157,16 @@ impl<'db> ScalarFieldWalker<'db> {
             field_id: self.id,
             db: self.db,
             default,
+        })
+    }
+
+    /// The `@generated` attribute of the field, if any.
+    pub fn generated_value(self) -> Option<GeneratedValueWalker<'db>> {
+        let ScalarField { generated, .. } = self.attributes();
+        generated.as_ref().map(|generated| GeneratedValueWalker {
+            field_id: self.id,
+            db: self.db,
+            generated,
         })
     }
 
@@ -256,6 +275,54 @@ impl<'db> DefaultValueWalker<'db> {
     /// ```ignore
     /// name String @default("george")
     /// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    /// ```
+    pub fn field(self) -> ScalarFieldWalker<'db> {
+        self.db.walk(self.field_id)
+    }
+}
+
+/// An `@generated()` attribute on a field.
+#[derive(Clone, Copy)]
+pub struct GeneratedValueWalker<'db> {
+    pub(super) field_id: ScalarFieldId,
+    pub(super) db: &'db ParserDatabase,
+    pub(super) generated: &'db GeneratedAttribute,
+}
+
+impl<'db> GeneratedValueWalker<'db> {
+    /// The AST node of the attribute.
+    pub fn ast_attribute(self) -> &'db ast::Attribute {
+        &self.db.asts[self.generated.generated_attribute]
+    }
+
+    /// The value expression in the `@generated` attribute.
+    ///
+    /// ```ignore
+    /// paddedId String @generated("LPAD(id, 3, '0')")
+    ///                            ^
+    /// ```
+    pub fn value(self) -> &'db ast::Expression {
+        &self.ast_attribute().arguments.arguments[self.generated.argument_idx].value
+    }
+
+    // TODO: do we need an is_stored, is_virtual, is_default for the kind?
+
+    /// The kind name of the generated value.
+    ///
+    /// ```ignore
+    /// nameFull String @generated("last || ', ' || first", kind: "stored")
+    ///                                                            ^^^^^^
+    /// ```
+    pub fn kind_name(self) -> Option<&'db str> {
+        self.generated.kind_name.map(|id| &self.db[id])
+    }
+    // TODO: not sure we need this?
+
+    /// The field carrying the generated attribute.
+    ///
+    /// ```ignore
+    /// nameFull String @generated("last || ', ' || first")
+    /// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     /// ```
     pub fn field(self) -> ScalarFieldWalker<'db> {
         self.db.walk(self.field_id)

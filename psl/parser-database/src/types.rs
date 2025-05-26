@@ -156,6 +156,7 @@ pub(super) struct CompositeTypeField {
     pub(super) r#type: ScalarFieldType,
     pub(super) mapped_name: Option<StringId>,
     pub(super) default: Option<DefaultAttribute>,
+    pub(super) generated: Option<GeneratedAttribute>,
     /// Native type name and arguments
     ///
     /// (attribute scope, native type name, arguments, span)
@@ -272,6 +273,13 @@ pub(crate) struct DefaultAttribute {
     pub(crate) default_attribute: crate::AttributeId,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct GeneratedAttribute {
+    pub(crate) kind_name: Option<StringId>,
+    pub(crate) argument_idx: usize,
+    pub(crate) generated_attribute: crate::AttributeId,
+}
+
 #[derive(Debug)]
 pub(crate) struct ScalarField {
     pub(crate) model_id: crate::ModelId,
@@ -280,6 +288,7 @@ pub(crate) struct ScalarField {
     pub(crate) is_ignored: bool,
     pub(crate) is_updated_at: bool,
     pub(crate) default: Option<DefaultAttribute>,
+    pub(crate) generated: Option<GeneratedAttribute>,
     /// @map
     pub(crate) mapped_name: Option<StringId>,
     /// Native type name and arguments
@@ -652,6 +661,7 @@ fn visit_model<'db>(model_id: crate::ModelId, ast_model: &'db ast::Model, ctx: &
                     is_ignored: false,
                     is_updated_at: false,
                     default: None,
+                    generated: None,
                     mapped_name: None,
                     native_type: None,
                 });
@@ -702,6 +712,7 @@ fn visit_composite_type<'db>(ct_id: crate::CompositeTypeId, ct: &'db ast::Compos
                     r#type: scalar_type,
                     mapped_name: None,
                     default: None,
+                    generated: None,
                     native_type: None,
                 };
                 ctx.types.composite_type_fields.insert((ct_id, field_id), field);
